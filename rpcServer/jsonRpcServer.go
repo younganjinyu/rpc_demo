@@ -41,13 +41,13 @@ func (f *Function) KCal(request *common.Args, reply *int) error {
 	}
 }
 
-func Getmanager() *common.ClientsNotifier {
-	return Manager
-}
+//func Getmanager() *common.ClientsNotifier {
+//	return Manager
+//}
+//
+//var Manager = common.NewClientsNotifier()
 
-var Manager = common.NewClientsNotifier()
-
-func SetupAuthorityJsonRpcServer() {
+func SetupJsonRpcServer() {
 	//Manager := common.NewClientsNotifier()
 	fun := new(Function)
 	err := rpc.Register(fun)
@@ -56,9 +56,6 @@ func SetupAuthorityJsonRpcServer() {
 	}
 	//server := rpc.NewServer()
 	//err := server.RegisterName("Auservice", fun)
-	//if err != nil {
-	//	return
-	//}
 	l, err := net.Listen("tcp", ":1234")
 	if err != nil {
 		log.Fatal("listen error:", err)
@@ -70,8 +67,6 @@ func SetupAuthorityJsonRpcServer() {
 			log.Print("rpc.Serve: accept:", err)
 			return
 		}
-		//modify
-		//Manager.Notify()
 		go rpc.ServeCodec(jsonrpc.NewServerCodec(conn))
 	}
 }
