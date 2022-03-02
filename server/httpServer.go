@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type Node struct {
@@ -61,8 +63,16 @@ func (node *Node) DelBlack(path string) {
 }
 
 func (node *Node) Start(port string) {
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           node,
+		ReadTimeout:       20 * time.Second,
+		ReadHeaderTimeout: 20 * time.Second,
+		WriteTimeout:      20 * time.Second,
+		//MaxHeaderBytes:    0,
+	}
 	// 使用自定义 handler
-	err := http.ListenAndServe(port, node)
+	err := server.ListenAndServe()
 	if err != nil {
 		log.Fatal("服务器创建失败")
 	}
@@ -70,6 +80,8 @@ func (node *Node) Start(port string) {
 
 func (node *Node) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	node.mu.RLock()
+	defer node.mu.RUnlock()
 	if node.Blacklist[path] == true {
 		fmt.Fprintf(w, "403 Forbidden")
 		return
@@ -84,11 +96,51 @@ func (node *Node) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+var upgrader = websocket.Upgrader{
+	HandshakeTimeout: 3 * time.Second,
+	ReadBufferSize:   1024,
+	WriteBufferSize:  1024,
+}
+
 func (node *Node) Prepare() {
 	node.AddRouter("/blackTest", blackTest)
 	node.AddBlack("/blackTest")
 	node.AddRouter("/normal", normal)
+	node.AddRouter("/wsTest", wsTest)
 	log.Println("prepare ready!")
+}
+
+func wsTest(w http.ResponseWriter, r *http.Request) {
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+	conn, err := upgrader.Upgrade(w, r, nil)
+	defer conn.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("TCP Connected!"+"client's address: ", conn.RemoteAddr())
+	err = conn.WriteMessage(1, []byte("Hi Client!"))
+	if err != nil {
+		log.Println("hi error")
+		return
+	}
+	reader(conn)
+}
+
+func reader(conn *websocket.Conn) {
+	for {
+		messageType, p, err := conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		fmt.Println(string(p))
+
+		if err := conn.WriteMessage(messageType, p); err != nil {
+			log.Println(err)
+			return
+		}
+	}
 }
 
 func blackTest(w http.ResponseWriter, r *http.Request) {

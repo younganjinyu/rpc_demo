@@ -1,6 +1,8 @@
 package main
 
-import "rpcApi/server"
+import (
+	"rpcApi/server"
+)
 
 func main() {
 	node := server.Create()
