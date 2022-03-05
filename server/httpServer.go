@@ -11,11 +11,30 @@ import (
 func (node *Node) Prepare() {
 	node.AddRouter("/blackTest", blackTest)
 	node.AddBlack("/blackTest")
-	node.AddRouter("/funcTest", funcTest)
 	node.AddRouter("/login", login)
+	node.AddRouter("/funcTest", funcTest)
 	node.AddRouter("/wsTest", wsTest)
+	node.AddRouter("/echoAll", echoAll)
 	log.Println("prepare ready!")
 }
+
+func (node *Node) Start(port string) {
+	server := &http.Server{
+		Addr:              port,
+		Handler:           node,
+		ReadTimeout:       20 * time.Second,
+		ReadHeaderTimeout: 20 * time.Second,
+		WriteTimeout:      20 * time.Second,
+		//MaxHeaderBytes:    0,
+	}
+	// 使用自定义 handler
+	//err := server.ListenAndServeTLS("server.crt", "server.key")
+	err := server.ListenAndServe()
+	if err != nil {
+		log.Fatal("build server err: ", err)
+	}
+}
+
 func blackTest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "error: website in blacklist!")
 }

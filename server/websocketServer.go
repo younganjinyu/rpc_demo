@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -10,39 +9,56 @@ import (
 
 var upgrader = websocket.Upgrader{
 	HandshakeTimeout: 3 * time.Second,
-	ReadBufferSize:   1024,
-	WriteBufferSize:  1024,
+	ReadBufferSize:   4096,
+	WriteBufferSize:  4096,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 func wsTest(w http.ResponseWriter, r *http.Request) {
-	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Fatal("upgrade err: ", err)
+	}
 	defer conn.Close()
-	if err != nil {
-		log.Fatal(err)
+
+	for {
+		msgType, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("read msg err: ", err)
+			break
+		}
+		log.Println("msgTtpe: ", msgType, "  msg: ", msg)
+		msg = []byte("received! ")
+		err = conn.WriteMessage(msgType, msg)
+		if err != nil {
+			log.Println("write err: ", err)
+			break
+		}
 	}
-	log.Println("TCP Connected!"+"client's address: ", conn.RemoteAddr())
-	err = conn.WriteMessage(1, []byte("Hi Client!"))
-	if err != nil {
-		log.Println("hi error")
-		return
-	}
-	reader(conn)
 }
 
-func reader(conn *websocket.Conn) {
+func echoAll(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("upgrade err: ", err)
+		return
+	}
+	defer conn.Close()
+
 	for {
-		messageType, p, err := conn.ReadMessage()
+		mt, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			return
+			log.Println("read err: ", err)
+			break
 		}
-
-		fmt.Println(string(p))
-
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
+		if mt == 1 {
+			err = conn.WriteMessage(mt, msg)
+			if err != nil {
+				log.Println("write err: ", err)
+				break
+			}
 		}
 	}
 }

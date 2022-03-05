@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"sync"
-	"time"
 )
 
 type Node struct {
@@ -57,22 +56,6 @@ func (node *Node) DelBlack(path string) {
 	node.mu.Lock()
 	defer node.mu.Unlock()
 	delete(node.Blacklist, path)
-}
-
-func (node *Node) Start(port string) {
-	server := &http.Server{
-		Addr:              ":8080",
-		Handler:           node,
-		ReadTimeout:       20 * time.Second,
-		ReadHeaderTimeout: 20 * time.Second,
-		WriteTimeout:      20 * time.Second,
-		//MaxHeaderBytes:    0,
-	}
-	// 使用自定义 handler
-	err := server.ListenAndServe()
-	if err != nil {
-		log.Fatal("failed to build server!")
-	}
 }
 
 func (node *Node) ServeHTTP(w http.ResponseWriter, r *http.Request) {
